@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>72 Claude Code Tips — 投影片瀏覽器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#header { background: #1e293b; padding: 8px 16px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+#header h1 { font-size: 15px; font-weight: 600; color: #a78bfa; }
+#breadcrumb { font-size: 13px; color: #94a3b8; }
+#count-badge { margin-left: auto; font-size: 12px; color: #64748b; }
+#hint { font-size: 11px; color: #475569; padding: 0 4px; white-space: nowrap; }
+#main { display: flex; flex: 1; overflow: hidden; }
+#sidebar { width: 210px; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; flex-shrink: 0; padding: 8px 0; }
+.tab { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 12px; background: none; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; text-align: left; transition: background 0.15s; border-left: 3px solid transparent; }
+.tab:hover { background: #263348; color: #e2e8f0; }
+.tab.active { background: #1e3a5f; border-left-color: #a78bfa; color: #e0f2fe; }
+.badge { background: rgba(167,139,250,0.15); color: #a78bfa; font-size: 10px; padding: 1px 5px; border-radius: 8px; flex-shrink: 0; }
+.tab.active .badge { background: rgba(167,139,250,0.25); }
+#content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#viewer { flex: 1; position: relative; overflow: hidden; cursor: grab; user-select: none; background: #0f172a; }
+#viewer.dragging { cursor: grabbing; }
+#main-img { position: absolute; transform-origin: 0 0; display: block; max-width: none; }
+#zoom-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #94a3b8; font-size: 11px; padding: 2px 7px; border-radius: 10px; pointer-events: none; }
+#nav { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; }
+#nav button { background: #334155; border: none; color: #e2e8f0; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+#nav button:hover { background: #475569; }
+#nav button:disabled { opacity: 0.3; cursor: default; }
+#slide-num { font-size: 12px; color: #94a3b8; min-width: 80px; text-align: center; }
+#thumbs { display: flex; gap: 4px; padding: 6px; background: #0f172a; border-top: 1px solid #1e293b; overflow-x: auto; flex-shrink: 0; height: 72px; align-items: center; }
+.thumb { height: 54px; border: 2px solid #334155; border-radius: 3px; cursor: pointer; opacity: 0.6; transition: opacity 0.1s, border-color 0.1s; flex-shrink: 0; }
+.thumb:hover { opacity: 0.85; }
+.thumb.active { border-color: #a78bfa; opacity: 1; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>72 Claude Code Tips</h1>
+  <span id="breadcrumb">— 投影片瀏覽器</span>
+  <span id="count-badge">249 張 · 17 章</span>
+  <span id="hint">← → 換頁 · 滾輪縮放 · 拖曳平移 · 雙擊還原</span>
+</div>
+<div id="main">
+  <div id="sidebar"></div>
+  <div id="content">
+    <div id="viewer">
+      <img id="main-img" src="" alt="slide">
+      <span id="zoom-badge">100%</span>
+    </div>
+    <div id="nav">
+      <button id="btn-prev">◄</button>
+      <span id="slide-num">1 / 1</span>
+      <button id="btn-next">►</button>
+    </div>
+    <div id="thumbs"></div>
+  </div>
+</div>
+<script>
+const GROUPS = [{"label": "第一章 Claude Code 入門", "images": [{"file": "png/第一章 Claude Code 入門-p001.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p002.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p003.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p004.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p005.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p006.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p007.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p008.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p009.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p010.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p011.png", "label": "第一章 Claude Code 入門"}, {"file": "png/第一章 Claude Code 入門-p012.png", "label": "第一章 Claude Code 入門"}]}, {"label": "第二章 撰寫高效提示詞", "images": [{"file": "png/第二章 撰寫高效提示詞-p001.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p002.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p003.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p004.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p005.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p006.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p007.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p008.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p009.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p010.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p011.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p012.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p013.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p014.png", "label": "第二章 撰寫高效提示詞"}, {"file": "png/第二章 撰寫高效提示詞-p015.png", "label": "第二章 撰寫高效提示詞"}]}, {"label": "第三章 程式碼生成精通", "images": [{"file": "png/第三章 程式碼生成精通-p001.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p002.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p003.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p004.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p005.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p006.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p007.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p008.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p009.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p010.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p011.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p012.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p013.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p014.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p015.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p016.png", "label": "第三章 程式碼生成精通"}, {"file": "png/第三章 程式碼生成精通-p017.png", "label": "第三章 程式碼生成精通"}]}, {"label": "第四章 除錯與問題解決", "images": [{"file": "png/第四章 除錯與問題解決-p001.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p002.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p003.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p004.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p005.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p006.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p007.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p008.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p009.png", "label": "第四章 除錯與問題解決"}, {"file": "png/第四章 除錯與問題解決-p010.png", "label": "第四章 除錯與問題解決"}]}, {"label": "第五章 測試策略", "images": [{"file": "png/第五章 測試策略-p001.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p002.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p003.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p004.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p005.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p006.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p007.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p008.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p009.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p010.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p011.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p012.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p013.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p014.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p015.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p016.png", "label": "第五章 測試策略"}, {"file": "png/第五章 測試策略-p017.png", "label": "第五章 測試策略"}]}, {"label": "第六章 資料庫與後端開發", "images": [{"file": "png/第六章 資料庫與後端開發-p001.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p002.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p003.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p004.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p005.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p006.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p007.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p008.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p009.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p010.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p011.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p012.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p013.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p014.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p015.png", "label": "第六章 資料庫與後端開發"}, {"file": "png/第六章 資料庫與後端開發-p016.png", "label": "第六章 資料庫與後端開發"}]}, {"label": "第七章 前端開發技巧", "images": [{"file": "png/第七章 前端開發技巧-p001.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p002.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p003.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p004.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p005.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p006.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p007.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p008.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p009.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p010.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p011.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p012.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p013.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p014.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p015.png", "label": "第七章 前端開發技巧"}, {"file": "png/第七章 前端開發技巧-p016.png", "label": "第七章 前端開發技巧"}]}, {"label": "第八章 後端架構", "images": [{"file": "png/第八章 後端架構-p001.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p002.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p003.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p004.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p005.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p006.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p007.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p008.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p009.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p010.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p011.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p012.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p013.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p014.png", "label": "第八章 後端架構"}, {"file": "png/第八章 後端架構-p015.png", "label": "第八章 後端架構"}]}, {"label": "第九章 效能與最佳化", "images": [{"file": "png/第九章 效能與最佳化-p001.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p002.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p003.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p004.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p005.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p006.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p007.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p008.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p009.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p010.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p011.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p012.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p013.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p014.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p015.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p016.png", "label": "第九章 效能與最佳化"}, {"file": "png/第九章 效能與最佳化-p017.png", "label": "第九章 效能與最佳化"}]}, {"label": "第十章 DevOps 與部署", "images": [{"file": "png/第十章 DevOps 與部署-p001.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p002.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p003.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p004.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p005.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p006.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p007.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p008.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p009.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p010.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p011.png", "label": "第十章 DevOps 與部署"}, {"file": "png/第十章 DevOps 與部署-p012.png", "label": "第十章 DevOps 與部署"}]}, {"label": "第十一章 程式碼品質與維護", "images": [{"file": "png/第十一章 程式碼品質與維護-p001.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p002.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p003.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p004.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p005.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p006.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p007.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p008.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p009.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p010.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p011.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p012.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p013.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p014.png", "label": "第十一章 程式碼品質與維護"}, {"file": "png/第十一章 程式碼品質與維護-p015.png", "label": "第十一章 程式碼品質與維護"}]}, {"label": "第十二章 文件撰寫最佳實踐", "images": [{"file": "png/第十二章 文件撰寫最佳實踐-p001.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p002.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p003.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p004.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p005.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p006.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p007.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p008.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p009.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p010.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p011.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p012.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p013.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p014.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p015.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p016.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p017.png", "label": "第十二章 文件撰寫最佳實踐"}, {"file": "png/第十二章 文件撰寫最佳實踐-p018.png", "label": "第十二章 文件撰寫最佳實踐"}]}, {"label": "第十三章 使用函式庫與框架", "images": [{"file": "png/第十三章 使用函式庫與框架-p001.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p002.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p003.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p004.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p005.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p006.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p007.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p008.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p009.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p010.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p011.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p012.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p013.png", "label": "第十三章 使用函式庫與框架"}, {"file": "png/第十三章 使用函式庫與框架-p014.png", "label": "第十三章 使用函式庫與框架"}]}, {"label": "第十五章 進階自動化腳本", "images": [{"file": "png/第十五章 進階自動化腳本-p001.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p002.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p003.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p004.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p005.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p006.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p007.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p008.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p009.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p010.png", "label": "第十五章 進階自動化腳本"}, {"file": "png/第十五章 進階自動化腳本-p011.png", "label": "第十五章 進階自動化腳本"}]}, {"label": "第十六章 專案規劃與架構", "images": [{"file": "png/第十六章 專案規劃與架構-p001.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p002.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p003.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p004.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p005.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p006.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p007.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p008.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p009.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p010.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p011.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p012.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p013.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p014.png", "label": "第十六章 專案規劃與架構"}, {"file": "png/第十六章 專案規劃與架構-p015.png", "label": "第十六章 專案規劃與架構"}]}, {"label": "第十七章 資源與工具", "images": [{"file": "png/第十七章 資源與工具-p001.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p002.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p003.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p004.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p005.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p006.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p007.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p008.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p009.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p010.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p011.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p012.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p013.png", "label": "第十七章 資源與工具"}, {"file": "png/第十七章 資源與工具-p014.png", "label": "第十七章 資源與工具"}]}, {"label": "第十八章 架構式提示詞設計", "images": [{"file": "png/第十八章 架構式提示詞設計-p001.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p002.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p003.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p004.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p005.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p006.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p007.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p008.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p009.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p010.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p011.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p012.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p013.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p014.png", "label": "第十八章 架構式提示詞設計"}, {"file": "png/第十八章 架構式提示詞設計-p015.png", "label": "第十八章 架構式提示詞設計"}]}];
+
+let curGroup = 0, curSlide = 0;
+let scale = 1, tx = 0, ty = 0;
+let dragging = false, startX, startY, startTx, startTy;
+
+const viewer = document.getElementById('viewer');
+const img = document.getElementById('main-img');
+const badge = document.getElementById('zoom-badge');
+const breadcrumb = document.getElementById('breadcrumb');
+const slideNum = document.getElementById('slide-num');
+const thumbsEl = document.getElementById('thumbs');
+const sidebar = document.getElementById('sidebar');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+
+function applyTransform() {
+  img.style.transform = `matrix(${scale},0,0,${scale},${tx},${ty})`;
+  badge.textContent = Math.round(scale * 100) + '%';
+}
+
+function fitImage() {
+  const PAD = 24;
+  if (!img.naturalWidth) return;
+  scale = Math.min((viewer.clientWidth - PAD*2) / img.naturalWidth,
+                   (viewer.clientHeight - PAD*2) / img.naturalHeight);
+  tx = (viewer.clientWidth - img.naturalWidth * scale) / 2;
+  ty = (viewer.clientHeight - img.naturalHeight * scale) / 2;
+  applyTransform();
+}
+
+function loadSlide(gIdx, sIdx) {
+  const group = GROUPS[gIdx];
+  if (!group || sIdx < 0 || sIdx >= group.images.length) return;
+  curGroup = gIdx; curSlide = sIdx;
+  img.onload = fitImage;
+  img.src = group.images[sIdx].file;
+  breadcrumb.textContent = '— ' + group.label;
+  slideNum.textContent = (sIdx + 1) + ' / ' + group.images.length;
+  btnPrev.disabled = sIdx === 0;
+  btnNext.disabled = sIdx === group.images.length - 1;
+  document.querySelectorAll('.thumb').forEach((t, i) => t.classList.toggle('active', i === sIdx));
+  const active = document.querySelector('.thumb.active');
+  if (active) active.scrollIntoView({behavior: 'smooth', inline: 'center', block: 'nearest'});
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === gIdx));
+}
+
+function buildSidebar() {
+  sidebar.innerHTML = '';
+  GROUPS.forEach((g, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (i === 0 ? ' active' : '');
+    btn.innerHTML = '<span>' + g.label + '</span><span class="badge">' + g.images.length + '</span>';
+    btn.onclick = () => switchGroup(i);
+    sidebar.appendChild(btn);
+  });
+}
+
+function switchGroup(idx) {
+  curGroup = idx; curSlide = 0;
+  buildThumbs();
+  loadSlide(curGroup, 0);
+}
+
+function buildThumbs() {
+  thumbsEl.innerHTML = '';
+  GROUPS[curGroup].images.forEach((entry, i) => {
+    const t = document.createElement('img');
+    t.className = 'thumb' + (i === 0 ? ' active' : '');
+    t.src = entry.file;
+    t.onclick = () => loadSlide(curGroup, i);
+    thumbsEl.appendChild(t);
+  });
+}
+
+buildSidebar();
+buildThumbs();
+loadSlide(0, 0);
+
+btnPrev.onclick = () => { if (curSlide > 0) loadSlide(curGroup, curSlide - 1); };
+btnNext.onclick = () => { if (curSlide < GROUPS[curGroup].images.length - 1) loadSlide(curGroup, curSlide + 1); };
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') btnNext.click();
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') btnPrev.click();
+});
+
+viewer.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.13 : 1/1.13;
+  const newScale = Math.min(Math.max(scale * factor, 0.1), 25);
+  const vr = viewer.getBoundingClientRect();
+  const cx = e.clientX - vr.left, cy = e.clientY - vr.top;
+  tx = cx - (cx - tx) * (newScale / scale);
+  ty = cy - (cy - ty) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+}, {passive: false});
+
+viewer.addEventListener('mousedown', e => {
+  dragging = true; viewer.classList.add('dragging');
+  startX = e.clientX; startY = e.clientY; startTx = tx; startTy = ty;
+  e.preventDefault();
+});
+document.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  tx = startTx + e.clientX - startX;
+  ty = startTy + e.clientY - startY;
+  applyTransform();
+});
+document.addEventListener('mouseup', () => { dragging = false; viewer.classList.remove('dragging'); });
+viewer.addEventListener('dblclick', fitImage);
+window.addEventListener('resize', fitImage);
+img.addEventListener('load', fitImage);
+</script>
+</body>
+</html>
