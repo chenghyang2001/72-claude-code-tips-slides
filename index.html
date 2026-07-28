@@ -30,8 +30,8 @@ body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; 
 #nav button:disabled { opacity: 0.3; cursor: default; }
 #btn-play { min-width: 88px; }
 #btn-play.playing { background: #7c3aed; color: #fff; }
-#speed-select { background: #334155; border: 1px solid #475569; color: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 13px; cursor: pointer; }
-#speed-select:focus { outline: none; border-color: #a78bfa; }
+#speed-select, #mode-select { background: #334155; border: 1px solid #475569; color: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+#speed-select:focus, #mode-select:focus { outline: none; border-color: #a78bfa; }
 #speed-select option:checked { background: #3730a3; }
 #slide-num { font-size: 12px; color: #94a3b8; min-width: 80px; text-align: center; }
 #thumbs { display: flex; gap: 4px; padding: 6px; background: #0f172a; border-top: 1px solid #1e293b; overflow-x: auto; flex-shrink: 0; height: 72px; align-items: center; }
@@ -64,6 +64,10 @@ body { background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; 
         <option value="15000">15 秒</option>
         <option value="20000">20 秒</option>
         <option value="30000">30 秒</option>
+      </select>
+      <select id="mode-select" title="自動播放範圍">
+        <option value="chapter" selected>本章循環</option>
+        <option value="book">全書連播</option>
       </select>
       <button id="btn-play">▶ 自動播放</button>
     </div>
@@ -189,11 +193,14 @@ img.addEventListener('load', fitImage);
 let autoInterval = null;
 const btnPlay = document.getElementById('btn-play');
 const speedSelect = document.getElementById('speed-select');
+const modeSelect = document.getElementById('mode-select');
 
 function autoNext() {
   const group = GROUPS[curGroup];
   if (curSlide < group.images.length - 1) {
     loadSlide(curGroup, curSlide + 1);
+  } else if (modeSelect.value === 'book') {
+    switchGroup((curGroup + 1) % GROUPS.length);
   } else {
     loadSlide(curGroup, 0);
   }
